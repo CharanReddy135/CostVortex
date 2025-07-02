@@ -1,0 +1,186 @@
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      background: linear-gradient(135deg, #1a202c, #2d3748);
+      min-height: 100vh;
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 1.5rem;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+      padding: 2.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    textarea {
+      font-family: 'Fira Code', monospace;
+    }
+    
+    .gradient-header {
+      background: linear-gradient(90deg, #8B5CF6, #EC4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .card {
+      background: rgba(45, 55, 72, 0.7);
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1.5rem;
+    }
+    
+    .tab {
+      padding: 0.8rem 1.5rem;
+      cursor: pointer;
+      font-weight: 500;
+      border-radius: 0.5rem 0.5rem 0 0;
+      transition: all 0.3s ease;
+      background: transparent;
+      color: #a0aec0;
+    }
+    
+    .tab.active {
+      color: #8B5CF6;
+      background: rgba(139, 92, 246, 0.1);
+      border-bottom: 2px solid #8B5CF6;
+    }
+    
+    .tab:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .highlight {
+      background: rgba(236, 72, 153, 0.15);
+      border-radius: 4px;
+      padding: 0.15rem 0.3rem;
+    }
+    
+    .token-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: rgba(101, 163, 13, 0.15);
+      color: #84cc16;
+    }
+    
+    .analysis-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .suggestion-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .glow {
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+    }
+    
+    .gradient-btn {
+      background: linear-gradient(90deg, #8B5CF6, #EC4899);
+      color: white;
+      border: none;
+      transition: all 0.3s ease;
+    }
+    
+    .gradient-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
+    }
+    
+    .prompt-container {
+      position: relative;
+    }
+    
+    .prompt-container::before {
+      content: "PROMPT";
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      background: rgba(45, 55, 72, 0.9);
+      color: #8B5CF6;
+      font-size: 0.75rem;
+      padding: 0 0.5rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    .response-container {
+      position: relative;
+    }
+    
+    .response-container::before {
+      content: "RESPONSE";
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      background: rgba(45, 55, 72, 0.9);
+      color: #EC4899;
+      font-size: 0.75rem;
+      padding: 0 0.5rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+    }
+    
+    .slide-fade-enter-active {
+      transition: all 0.3s ease-out;
+    }
+    
+    .slide-fade-leave-active {
+      transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+    }
+    
+    .slide-fade-enter-from,
+    .slide-fade-leave-to {
+      transform: translateY(20px);
+      opacity: 0;
+    }

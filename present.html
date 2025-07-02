@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cost Vortex | API Cost Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        vortex: {
+                            100: '#e0d7ff',
+                            200: '#c2b5ff',
+                            300: '#a392ff',
+                            400: '#8570ff',
+                            500: '#664dff',
+                            600: '#523de6',
+                            700: '#3d2dcc',
+                            800: '#291db3',
+                            900: '#140d99',
+                        },
+                        dark: {
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            min-height: 100vh;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        
+        .presentation-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .vortex-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(102, 77, 255, 0.1) 0%, rgba(15, 23, 42, 0) 70%);
+            z-index: -1;
+        }
+        
+        .vortex-particle {
+            position: absolute;
+            background: rgba(102, 77, 255, 0.5);
+            border-radius: 50%;
+            animation: float 15s infinite linear;
+        }
+        
+        .slide {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem 2rem;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 1s ease;
+            display: none;
+        }
+        
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            display: flex;
+        }
+        
+        .slide-title {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            text-align: center;
+            background: linear-gradient(90deg, #664dff, #a392ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(102, 77, 255, 0.5);
+        }
+        
+        .slide-subtitle {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            max-width: 800px;
+            text-align: center;
+            margin-bottom: 3rem;
+            line-height: 1.6;
+        }
+        
+        .feature-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 350px;
+            margin: 1rem;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(102, 77, 255, 0.3);
+        }
+        
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(102, 77, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: #664dff;
+        }
+        
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-desc {
+            color: #94a3b8;
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        .dashboard-preview {
+            width: 100%;
+            max-width: 900px;
+            height: 500px;
+            background: linear-gradient(45deg, #1e293b, #0f172a);
+            border-radius: 16px;
+            border: 1px solid rgba(102, 77, 255, 0.3);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 1rem;
+            height: 100%;
+            padding: 1.5rem;
+        }
+        
+        .dashboard-cell {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .dashboard-cell:nth-child(1) {
+            grid-column: span 2;
+            grid-row: span 2;
+            background: rgba(102, 77, 255, 0.1);
+        }
+        
+        .dashboard-cell:nth-child(2) {
+            background: rgba(163, 146, 255, 0.1);
+        }
+        
+        .dashboard-cell:nth-child(3) {
+            background: rgba(102, 77, 255, 0.1);
+        }
+        
+        .dashboard-cell:nth-child(4) {
+            grid-column: span 2;
+            background: rgba(163, 146, 255, 0.1);
+        }
+        
+        .dashboard-cell:nth-child(5) {
+            grid-column: span 4;
+            background: rgba(102, 77, 255, 0.1);
+        }
+        
+        .chart-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #0f172a, #1e293b);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(to top, rgba(102, 77, 255, 0.4), transparent);
+            clip-path: polygon(0% 100%, 10% 70%, 20% 80%, 30% 60%, 40% 90%, 50% 50%, 60% 70%, 70% 40%, 80% 85%, 90% 30%, 100% 100%);
+        }
+        
+        .spike-explainer {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 77, 255, 0.3);
+            position: relative;
+        }
+        
+        .ai-message {
+            background: rgba(102, 77, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid #664dff;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(102, 77, 255, 0.2);
+            border: 1px solid rgba(102, 77, 255, 0.5);
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(102, 77, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #664dff, #a392ff);
+            z-index: 100;
+            transition: width 0.5s ease;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            100% {
+                transform: translate(20px, -20px) rotate(360deg);
+            }
+        }
+        
+        .magic-card {
+            background: linear-gradient(135deg, rgba(102, 77, 255, 0.1), rgba(163, 146, 255, 0.1));
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            border: 1px solid rgba(102, 77, 255, 0.3);
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .magic-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .magic-title i {
+            margin-right: 0.8rem;
+            color: #a392ff;
+        }
+        
+        .magic-desc {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        
+        .live-demo {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 16px;
+            border: 1px solid rgba(102, 77, 255, 0.3);
+            margin: 2rem 0;
+            overflow: hidden;
+        }
+        
+        .log-stream {
+            height: 100%;
+            overflow-y: auto;
+            padding: 1.5rem;
+            font-family: monospace;
+        }
+        
+        .log-entry {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #94a3b8;
+            font-size: 0.9rem;
+            animation: logEntry 0.5s ease;
+        }
+        
+        .log-entry .timestamp {
+            color: #a392ff;
+        }
+        
+        .log-entry .endpoint {
+            color: #664dff;
+        }
+        
+        .log-entry .cost {
+            color: #10b981;
+        }
+        
+        @keyframes logEntry {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .cta-button {
+            background: linear-gradient(90deg, #664dff, #a392ff);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(102, 77, 255, 0.3);
+        }
+        
+        .final-message {
+            font-size: 3rem;
+            font-weight: 800;
+            text-align: center;
+            margin-top: 2rem;
+            background: linear-gradient(90deg, #664dff, #a392ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #664dff, #a392ff);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.8rem;
+        }
+        
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    
+    <div class="presentation-container">
+        <div class="vortex-bg" id="vortexBg"></div>
+        
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-chart-network"></i>
+            </div>
+            <div class="logo-text">Cost Vortex</div>
+        </div>
+        
+        <!-- Slide 1: Cover -->
+        <div class="slide active" id="slide1">
+            <h1 class="slide-title">Cost Vortex</h1>
+            <p class="slide-subtitle">The Ultimate API Cost Optimization Platform</p>
+            <div class="mt-8 text-xl text-vortex-200">Transform API spending into strategic savings</div>
+            <div class="mt-12">
+                <button class="cta-button" onclick="nextSlide()">
+                    <i class="fas fa-play mr-2"></i> Begin Presentation
+                </button>
+            </div>
+        </div>
+        
+        <!-- Slide 2: The Problem -->
+        <div class="slide" id="slide2">
+            <h1 class="slide-title">The Hidden API Cost Crisis</h1>
+            <p class="slide-subtitle">Developers are flying blind when it comes to API costs</p>
+            
+            <div class="flex flex-wrap justify-center mt-8">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h3 class="feature-title">Cost Surprises</h3>
+                    <p class="feature-desc">Unexpected bills that derail budgets and projects</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3 class="feature-title">Lack of Visibility</h3>
+                    <p class="feature-desc">No clear breakdown of what's driving costs</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="feature-title">Inefficient Usage</h3>
+                    <p class="feature-desc">Wasteful API calls and unoptimized prompts</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 3: The Solution -->
+        <div class="slide" id="slide3">
+            <h1 class="slide-title">Introducing Cost Vortex</h1>
+            <p class="slide-subtitle">Your complete API cost intelligence platform</p>
+            
+            <div class="dashboard-preview mt-8">
+                <div class="dashboard-grid">
+                    <div class="dashboard-cell">
+                        <div class="chart-placeholder">
+                            <div class="chart-line"></div>
+                        </div>
+                    </div>
+                    <div class="dashboard-cell">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-vortex-400">$1,284</div>
+                            <div class="text-sm text-vortex-200">Total Cost</div>
+                        </div>
+                    </div>
+                    <div class="dashboard-cell">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-vortex-400">2,458</div>
+                            <div class="text-sm text-vortex-200">API Calls</div>
+                        </div>
+                    </div>
+                    <div class="dashboard-cell">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-vortex-400">GPT-4</div>
+                            <div class="text-sm text-vortex-200">Top Model</div>
+                        </div>
+                    </div>
+                    <div class="dashboard-cell">
+                        <div class="chart-placeholder">
+                            <div class="chart-line"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="slide-subtitle mt-4">Real-time cost tracking with actionable insights</p>
+        </div>
+        
+        <!-- Slide 4: Core Features -->
+        <div class="slide" id="slide4">
+            <h1 class="slide-title">Core Features</h1>
+            <p class="slide-subtitle">Everything you need to master API costs</p>
+            
+            <div class="flex flex-wrap justify-center mt-8">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3 class="feature-title">Track API Calls</h3>
+                    <p class="feature-desc">Monitor every call with detailed metrics</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h3 class="feature-title">Cost Calculation</h3>
+                    <p class="feature-desc">Real-time cost per call based on provider pricing</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h3 class="feature-title">Prompt Analyzer</h3>
+                    <p class="feature-desc">Optimize LLM prompts to reduce token waste</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap justify-center">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3 class="feature-title">Visual Dashboard</h3>
+                    <p class="feature-desc">Heatmaps and trends to visualize spending</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="feature-title">AI Insights</h3>
+                    <p class="feature-desc">GPT-powered analysis of usage patterns</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3 class="feature-title">Fix Suggestions</h3>
+                    <p class="feature-desc">Actionable recommendations to reduce costs</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 5: Demo-Winning Magic -->
+        <div class="slide" id="slide5">
+            <h1 class="slide-title">The Cost Vortex Magic</h1>
+            <p class="slide-subtitle">What makes us stand out from the competition</p>
+            
+            <div class="flex flex-wrap justify-center mt-8">
+                <div class="magic-card">
+                    <h3 class="magic-title"><i class="fas fa-wand-magic-sparkles"></i> Explain This Spike</h3>
+                    <p class="magic-desc">Click on any cost spike to get an AI-generated explanation of what caused it and how to fix it</p>
+                </div>
+                
+                <div class="magic-card">
+                    <h3 class="magic-title"><i class="fas fa-paint-brush"></i> Stunning Visuals</h3>
+                    <p class="magic-desc">Beautiful, intuitive dashboards that make data exploration a delight</p>
+                </div>
+                
+                <div class="magic-card">
+                    <h3 class="magic-title"><i class="fas fa-bolt"></i> Fake Live Mode</h3>
+                    <p class="magic-desc">Simulated API logs that update in real-time for convincing demos</p>
+                </div>
+            </div>
+            
+            <div class="spike-explainer mt-8">
+                <h3 class="feature-title">Cost Spike Analysis Example</h3>
+                <div class="ai-message">
+                    <p>🚨 <strong>Spike Detected:</strong> 3:45 PM - 4:15 PM</p>
+                    <p>💡 <strong>Likely Cause:</strong> Retry storm in payment processing service</p>
+                    <p>📊 <strong>Impact:</strong> 428 failed API calls costing $124.72</p>
+                    <p>🔧 <strong>Recommended Fix:</strong> Implement exponential backoff with jitter in client retry logic</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slide 6: Live Demo -->
+        <div class="slide" id="slide6">
+            <h1 class="slide-title">Live Demo</h1>
+            <p class="slide-subtitle">See Cost Vortex in action</p>
+            
+            <div class="live-demo mt-8">
+                <div class="log-stream" id="logStream">
+                    <!-- Logs will be inserted here by JavaScript -->
+                </div>
+            </div>
+            
+            <button class="cta-button mt-8" onclick="simulateSpike()">
+                <i class="fas fa-bolt mr-2"></i> Simulate Cost Spike
+            </button>
+        </div>
+        
+        <!-- Slide 7: The Future -->
+        <div class="slide" id="slide7">
+            <h1 class="slide-title">The Future of API Cost Management</h1>
+            <p class="slide-subtitle">Join us in revolutionizing how companies manage API expenses</p>
+            
+            <div class="flex flex-wrap justify-center mt-8">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="feature-title">Multi-Provider Support</h3>
+                    <p class="feature-desc">Track costs across all major API providers</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3 class="feature-title">Budget Alerts</h3>
+                    <p class="feature-desc">Real-time notifications when spending exceeds thresholds</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h3 class="feature-title">Team Collaboration</h3>
+                    <p class="feature-desc">Share insights and optimize together</p>
+                </div>
+            </div>
+            
+            <div class="final-message mt-12">
+                Transform Your API Spend Today
+            </div>
+            
+            <button class="cta-button mt-8">   
+                <i class="fas fa-rocket mr-2"></i> Get Started
+            </button>
+        </div>
+        
+        <div class="navigation">
+            <div class="nav-btn" onclick="prevSlide()">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div class="nav-btn" onclick="nextSlide()">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Create vortex particles
+        function createVortexParticles() {
+            const container = document.getElementById('vortexBg');
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('vortex-particle');
+                
+                // Random size
+                const size = Math.random() * 20 + 5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Random position
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                
+                // Random animation delay
+                particle.style.animationDelay = `${Math.random() * 15}s`;
+                
+                container.appendChild(particle);
+            }
+        }
+        
+        // Slide management
+        let currentSlide = 1;
+        const totalSlides = 7;
+        
+        function showSlide(slideNum) {
+            // Hide all slides
+            for (let i = 1; i <= totalSlides; i++) {
+                document.getElementById(`slide${i}`).classList.remove('active');
+            }
+            
+            // Show the requested slide
+            document.getElementById(`slide${slideNum}`).classList.add('active');
+            
+            // Update progress bar
+            const progressPercent = ((slideNum - 1) / (totalSlides - 1)) * 100;
+            document.getElementById('progressBar').style.width = `${progressPercent}%`;
+            
+            currentSlide = slideNum;
+            
+            // If we're on the demo slide, start the demo
+            if (slideNum === 6) {
+                startDemo();
+            }
+        }
+        
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        }
+        
+        function prevSlide() {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+        
+        // Demo functions
+        function startDemo() {
+            const logStream = document.getElementById('logStream');
+            logStream.innerHTML = '';
+            
+            // Add initial logs
+            for (let i = 0; i < 15; i++) {
+                addLogEntry();
+            }
+            
+            // Add new log every 2 seconds
+            window.demoInterval = setInterval(addLogEntry, 2000);
+        }
+        
+        function addLogEntry() {
+            const logStream = document.getElementById('logStream');
+            const timestamp = new Date();
+            const hours = timestamp.getHours().toString().padStart(2, '0');
+            const minutes = timestamp.getMinutes().toString().padStart(2, '0');
+            const seconds = timestamp.getSeconds().toString().padStart(2, '0');
+            
+            const endpoints = [
+                '/v1/chat/completions',
+                '/v1/completions',
+                '/v1/embeddings',
+                '/v1/images/generations',
+                '/v1/moderations'
+            ];
+            
+            const models = [
+                'gpt-4-32k',
+                'gpt-4',
+                'gpt-3.5-turbo',
+                'text-embedding-ada-002',
+                'dall-e-3'
+            ];
+            
+            const statuses = ['200 OK', '200 OK', '200 OK', '200 OK', '200 OK', '429 Too Many Requests', '500 Internal Server Error'];
+            
+            const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+            const model = models[Math.floor(Math.random() * models.length)];
+            const tokens = Math.floor(Math.random() * 2000) + 500;
+            const cost = (Math.random() * 0.5).toFixed(4);
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            
+            const logEntry = document.createElement('div');
+            logEntry.classList.add('log-entry');
+            logEntry.innerHTML = `
+                <span class="timestamp">${hours}:${minutes}:${seconds}</span> | 
+                <span class="endpoint">${endpoint}</span> | 
+                <span class="model">${model}</span> | 
+                ${tokens} tokens | 
+                <span class="cost">$${cost}</span> | 
+                <span class="status">${status}</span>
+            `;
+            
+            logStream.prepend(logEntry);
+            
+            // Keep only the last 20 entries
+            if (logStream.children.length > 20) {
+                logStream.removeChild(logStream.lastChild);
+            }
+        }
+        
+        function simulateSpike() {
+            const logStream = document.getElementById('logStream');
+            
+            // Add 10 error logs in quick succession
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const timestamp = new Date();
+                    const hours = timestamp.getHours().toString().padStart(2, '0');
+                    const minutes = timestamp.getMinutes().toString().padStart(2, '0');
+                    const seconds = timestamp.getSeconds().toString().padStart(2, '0');
+                    
+                    const logEntry = document.createElement('div');
+                    logEntry.classList.add('log-entry');
+                    logEntry.innerHTML = `
+                        <span class="timestamp">${hours}:${minutes}:${seconds}</span> | 
+                        <span class="endpoint" style="color:#ef4444">/v1/payments/process</span> | 
+                        <span class="model">custom-model</span> | 
+                        ${Math.floor(Math.random() * 500)} tokens | 
+                        <span class="cost" style="color:#ef4444">$${(Math.random() * 1.2).toFixed(4)}</span> | 
+                        <span class="status" style="color:#ef4444">429 Too Many Requests</span>
+                    `;
+                    
+                    logStream.prepend(logEntry);
+                    
+                    // Keep only the last 20 entries
+                    if (logStream.children.length > 20) {
+                        logStream.removeChild(logStream.lastChild);
+                    }
+                }, i * 200);
+            }
+        }
+        
+        // Initialize
+        window.onload = function() {
+            createVortexParticles();
+            showSlide(1);
+        };
+    </script>
+</body>
+</html>

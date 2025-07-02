@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>API Cost Analyzer - Track API Calls</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="container" role="main">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-4xl font-bold gradient-header">Cost Vortex</h1>
+        <p class="text-gray-400 mt-2">
+          Track, analyze, and optimize your API usage and costs
+        </p>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div :class="['tab', activeTab === 'tracker' ? 'active' : '']" @click="activeTab = 'tracker'">
+        <i class="fas fa-chart-line mr-2"></i>Cost Tracker
+      </div>
+      <div :class="['tab', activeTab === 'analyzer' ? 'active' : '']" @click="activeTab = 'analyzer'">
+        <i class="fas fa-search mr-2"></i>Prompt Analyzer
+      </div>
+     
+    </div>
+
+    <!-- Cost Tracker Section -->
+    <transition name="slide-fade">
+      <div v-if="activeTab === 'tracker'">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div class="card">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="text-gray-400">Total Cost</div>
+                <div class="text-3xl font-bold text-white mt-1">${{ totalCost.toFixed(4) }}</div>
+              </div>
+              <div class="bg-purple-500/20 p-3 rounded-full">
+                <i class="fas fa-dollar-sign text-purple-400 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-700">
+              <div class="text-gray-400">Today's Cost</div>
+              <div class="text-xl font-bold text-white mt-1">${{ todaysCost.toFixed(4) }}</div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="text-gray-400">API Calls</div>
+                <div class="text-3xl font-bold text-white mt-1">{{ apiCalls.length }}</div>
+              </div>
+              <div class="bg-pink-500/20 p-3 rounded-full">
+                <i class="fas fa-code text-pink-400 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-700">
+              <div class="text-gray-400">Avg. Cost/Call</div>
+              <div class="text-xl font-bold text-white mt-1">${{ avgCostPerCall.toFixed(5) }}</div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="text-gray-400">Tokens Used</div>
+                <div class="text-3xl font-bold text-white mt-1">{{ totalTokens }}</div>
+              </div>
+              <div class="bg-indigo-500/20 p-3 rounded-full">
+                <i class="fas fa-cube text-indigo-400 text-xl"></i>
+              </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-700">
+              <div class="text-gray-400">Avg. Tokens/Call</div>
+              <div class="text-xl font-bold text-white mt-1">{{ avgTokensPerCall }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+          <h2 class="text-2xl font-semibold text-white mb-4 md:mb-0">API Call Logs</h2>
+          <div class="flex space-x-3">
+            <label 
+              for="fileUpload"
+              class="cursor-pointer px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium flex items-center"
+            >
+              <i class="fas fa-upload mr-2"></i>Upload Logs
+            </label>
+            <input 
+              type="file" 
+              id="fileUpload" 
+              class="hidden" 
+              accept=".json"
+              @change="handleFileUpload"
+            />
+            
+            <button
+              @click="generateSampleData"
+              class="px-4 py-2 bg-purple-700 hover:bg-purple-600 rounded-lg text-white font-medium flex items-center"
+            >
+              <i class="fas fa-bolt mr-2"></i>Demo Data
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-8">
+          <div class="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
+            <div class="flex-1">
+              <label class="block mb-2 font-medium text-gray-300">
+                Or paste your raw code/logs here:
+              </label>
+              <textarea 
+                v-model="rawInput" 
+                rows="3" 
+                placeholder="Paste your API call code or logs here..."
+                class="w-full rounded-lg border border-gray-600 bg-gray-800 text-white p-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              ></textarea>
+            </div>
+            <div class="flex flex-col space-y-2">
+              <button
+                @click="parseRawInput"
+                class="gradient-btn px-6 py-3 rounded-lg text-white font-semibold flex items-center justify-center"
+              >
+                <i class="fas fa-bolt mr-2"></i>Parse Input
+              </button>
+              <button
+                @click="resetRawInput"
+                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="apiCalls.length > 0" class="overflow-x-auto rounded-xl">
+          <table class="min-w-full divide-y divide-gray-700">
+            <thead class="bg-gray-800">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Timestamp</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Endpoint</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Model</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Tokens</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Cost ($)</th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="bg-gray-800/50 divide-y divide-gray-700">
+              <tr v-for="(call, index) in apiCalls" :key="index" class="hover:bg-gray-800 transition">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ new Date(call.timestamp).toLocaleString() }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-purple-400">{{ call.endpoint }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ call.model || 'N/A' }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-indigo-400">{{ call.tokens_used }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-400">${{ call.cost.toFixed(5) }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                  <button 
+                    @click="analyzeCall(call)"
+                    class="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-white flex items-center mx-auto"
+                  >
+                    <i class="fas fa-search mr-1"></i> Analyze
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else class="text-center py-12">
+          <div class="text-gray-500 mb-4">
+            <i class="fas fa-cloud-upload-alt text-4xl"></i>
+          </div>
+          <p class="text-gray-400">No logs uploaded or parsed yet. Upload a file or paste logs to get started.</p>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Prompt Analyzer Section -->
+    <transition name="slide-fade">
+      <div v-if="activeTab === 'analyzer'">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div class="card">
+            <div class="prompt-container">
+              <textarea 
+                v-model="currentPrompt" 
+                rows="12"
+                placeholder="Enter your prompt here..."
+                class="w-full rounded-lg border border-gray-600 bg-gray-800 text-white p-4 focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+              ></textarea>
+            </div>
+            
+            <div class="mt-4 flex flex-wrap">
+              <div class="token-badge mr-3 mb-2">
+                <i class="fas fa-keyboard mr-2"></i> {{ promptTokenCount }} tokens
+              </div>
+              <div class="token-badge mr-3 mb-2">
+                <i class="fas fa-clock mr-2"></i> {{ estimatedPromptTime }} sec
+              </div>
+              <div class="token-badge mr-3 mb-2">
+                <i class="fas fa-dollar-sign mr-2"></i> ${{ promptCost.toFixed(5) }}
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="response-container">
+              <textarea 
+                v-model="currentResponse" 
+                rows="12"
+                placeholder="Enter response here..."
+                class="w-full rounded-lg border border-gray-600 bg-gray-800 text-white p-4 focus:outline-none focus:ring-2 focus:ring-pink-500 font-mono"
+              ></textarea>
+            </div>
+            
+            <div class="mt-4 flex flex-wrap">
+              <div class="token-badge mr-3 mb-2">
+                <i class="fas fa-keyboard mr-2"></i> {{ responseTokenCount }} tokens
+              </div>
+              <div class="token-badge mr-3 mb-2">
+                <i class="fas fa-clock mr-2"></i> {{ estimatedResponseTime }} sec
+              </div>
+              <div class="token-badge mr-3 mb-2">
+                <i class="fas fa-dollar-sign mr-2"></i> ${{ responseCost.toFixed(5) }}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-chart-pie mr-2 text-purple-400"></i> Cost Breakdown
+            </h3>
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-sm text-gray-400 mb-1">
+                  <span>Prompt Cost</span>
+                  <span>${{ promptCost.toFixed(5) }}</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                  <div class="bg-purple-500 h-2 rounded-full" :style="{ width: promptCostPercentage + '%' }"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-sm text-gray-400 mb-1">
+                  <span>Response Cost</span>
+                  <span>${{ responseCost.toFixed(5) }}</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                  <div class="bg-pink-500 h-2 rounded-full" :style="{ width: responseCostPercentage + '%' }"></div>
+                </div>
+              </div>
+              <div class="pt-3 border-t border-gray-700">
+                <div class="flex justify-between">
+                  <span class="text-gray-300">Total Cost</span>
+                  <span class="text-lg font-bold text-green-400">${{ (promptCost + responseCost).toFixed(5) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-search mr-2 text-blue-400"></i> Prompt Analysis
+            </h3>
+            <div class="flex flex-wrap">
+              <div v-for="(item, index) in promptAnalysis" :key="index" class="analysis-badge">
+                <i :class="item.icon + ' mr-1'"></i> {{ item.text }}
+              </div>
+            </div>
+            
+            <div v-if="promptAnalysis.length" class="mt-4">
+              <div v-for="(highlight, index) in promptHighlights" :key="index" class="text-sm text-gray-300 mb-2">
+                <span class="text-gray-400">"</span>
+                <span class="highlight">{{ highlight.text }}</span>
+                <span class="text-gray-400">"</span> - {{ highlight.reason }}
+              </div>
+            </div>
+            <div v-else class="text-gray-400 text-sm italic mt-4">
+              No issues detected in your prompt. Good job!
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-lightbulb mr-2 text-yellow-400"></i> Optimization Suggestions
+            </h3>
+            <div class="flex flex-wrap mb-3">
+              <div v-for="(suggestion, index) in promptSuggestions" :key="index" class="suggestion-badge">
+                <i class="fas fa-bolt mr-1"></i> {{ suggestion }}
+              </div>
+            </div>
+            
+            <div class="mt-4 bg-gray-800 rounded-lg p-4">
+              <h4 class="text-sm font-medium text-gray-400 mb-2">Potential Savings</h4>
+              <div class="flex items-center">
+                <div class="text-2xl font-bold text-green-400 mr-2">${{ potentialSavings.toFixed(3) }}</div>
+                <div class="text-sm text-gray-400">({{ potentialSavingsPercentage.toFixed(3) }}% reduction)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      
+        <div class="card">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+              <i class="fas fa-robot mr-2 text-purple-400"></i> AI-Powered Recommendations
+            </h3>
+            <button 
+              @click="generateAISuggestions"
+              class="gradient-btn px-4 py-2 rounded-lg text-white font-medium flex items-center"
+            >
+              <i class="fas fa-magic mr-2"></i> Generate Suggestions
+            </button>
+          </div>
+          
+          <div v-if="aiSuggestions.length" class="bg-gray-800 rounded-lg p-4">
+            <div v-for="(suggestion, index) in aiSuggestions" :key="index" class="flex items-start mb-3">
+              <div class="bg-purple-500/20 p-2 rounded-full mr-3">
+                <i class="fas fa-sparkles text-purple-400"></i>
+              </div>
+              <div class="text-gray-300">{{ suggestion }}</div>
+            </div>
+          </div>
+          <div v-else class="text-gray-400 text-sm italic">
+            Click "Generate Suggestions" to get AI-powered recommendations for optimizing your prompt.
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Smart Insights Section -->
+    <transition name="slide-fade">
+      <div v-if="activeTab === 'insights'">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-fire mr-2 text-orange-400"></i> Cost Heatmap
+            </h3>
+            <div class="bg-gray-800 rounded-lg p-4">
+              <div class="text-center text-gray-400 text-sm mb-2">API Cost Distribution by Time of Day</div>
+              <div class="grid grid-cols-12 gap-1">
+                <div v-for="(hour, index) in heatmapData" :key="index" 
+                  :class="['h-6 rounded', hour.color]" 
+                  :title="`${hour.hour}:00 - $${hour.value.toFixed(4)}`"
+                ></div>
+              </div>
+              <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span>12am</span>
+                <span>6am</span>
+                <span>12pm</span>
+                <span>6pm</span>
+                <span>12am</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-chart-line mr-2 text-green-400"></i> Cost Trends
+            </h3>
+            <div class="bg-gray-800 rounded-lg p-4">
+              <div class="flex space-x-4 mb-4">
+                <div>
+                  <div class="text-gray-400 text-sm">Today</div>
+                  <div class="text-xl font-bold text-white">${{ todaysCost.toFixed(4) }}</div>
+                </div>
+                <div>
+                  <div class="text-gray-400 text-sm">Yesterday</div>
+                  <div class="text-xl font-bold text-white">${{ yesterdaysCost.toFixed(4) }}</div>
+                </div>
+                <div>
+                  <div class="text-gray-400 text-sm">Change</div>
+                  <div :class="['text-xl font-bold', costChange >= 0 ? 'text-green-400' : 'text-red-400']">
+                    {{ costChange >= 0 ? '+' : '' }}{{ costChange.toFixed(2) }}%
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-end h-20 mt-4 space-x-1">
+                <div v-for="(day, index) in weeklyCosts" :key="index" 
+                  class="flex-1 bg-gradient-to-t from-purple-500 to-purple-700 rounded-t" 
+                  :style="{ height: day.height + '%' }"
+                ></div>
+              </div>
+              <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span v-for="(day, index) in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="index">
+                  {{ day }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-cube mr-2 text-indigo-400"></i> Top Models by Cost
+            </h3>
+            <div class="space-y-4">
+              <div v-for="(model, index) in topModels" :key="index">
+                <div class="flex justify-between mb-1">
+                  <span class="text-gray-300">{{ model.name }}</span>
+                  <span class="text-gray-400">${{ model.cost.toFixed(4) }}</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                  <div class="bg-indigo-500 h-2 rounded-full" :style="{ width: model.percentage + '%' }"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-terminal mr-2 text-blue-400"></i> Top Endpoints
+            </h3>
+            <div class="space-y-4">
+              <div v-for="(endpoint, index) in topEndpoints" :key="index">
+                <div class="flex justify-between mb-1">
+                  <span class="text-gray-300">{{ endpoint.name }}</span>
+                  <span class="text-gray-400">${{ endpoint.cost.toFixed(4) }}</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" :style="{ width: endpoint.percentage + '%' }"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+              <i class="fas fa-exclamation-triangle mr-2 text-yellow-400"></i> Anomaly Detection
+            </h3>
+            <div v-if="anomalies.length" class="space-y-3">
+              <div v-for="(anomaly, index) in anomalies" :key="index" class="bg-gray-800 rounded-lg p-3">
+                <div class="flex justify-between items-center mb-1">
+                  <div class="font-medium text-gray-300">{{ anomaly.title }}</div>
+                  <div class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">
+                    {{ anomaly.severity }}
+                  </div>
+                </div>
+                <div class="text-sm text-gray-400">{{ anomaly.description }}</div>
+              </div>
+            </div>
+            <div v-else class="text-center py-4">
+              <div class="text-green-400 mb-2">
+                <i class="fas fa-check-circle text-2xl"></i>
+              </div>
+              <p class="text-gray-400">No anomalies detected in your API usage patterns</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+              <i class="fas fa-robot mr-2 text-purple-400"></i> AI Insights Summary
+            </h3>
+            <button 
+              @click="generateAISummary"
+              class="gradient-btn px-4 py-2 rounded-lg text-white font-medium flex items-center"
+            >
+              <i class="fas fa-magic mr-2"></i> Generate Summary
+            </button>
+          </div>
+          
+          <div v-if="aiSummary" class="bg-gray-800 rounded-lg p-4">
+            <div class="text-gray-300 whitespace-pre-line">{{ aiSummary }}</div>
+          </div>
+          <div v-else class="text-gray-400 text-sm italic">
+            Click "Generate Summary" to get AI-powered insights into your API usage patterns.
+          </div>
+        </div>
+      </div>
+    </transition>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, watch } = Vue;
+    
+    // Helper function to escape HTML
+    const escapeHtml = (text) => {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+    
+    // Sample data for demo
+    const sampleData = [
+      {
+        timestamp: "2025-01-06T08:30:00Z",
+        endpoint: "/v1/chat/completions",
+        model: "gpt-4",
+        prompt_tokens: 1200,
+        completion_tokens: 450,
+        cost: 0.072,
+        prompt: "You are a helpful assistant. Please summarize the key points from the following research paper abstract: 'Recent advances in artificial intelligence have enabled significant progress in natural language processing tasks. Transformer models, particularly large language models, have demonstrated remarkable capabilities in understanding and generating human-like text across various domains. This paper reviews the state-of-the-art techniques and discusses future research directions.'",
+        response: "The abstract discusses recent AI advances, highlighting transformer models and large language models for NLP tasks. It notes their capabilities in text understanding and generation across domains, and states the paper will review current techniques and future research directions."
+      },
+      {
+        timestamp: "2025-01-06T11:45:00Z",
+        endpoint: "/v1/completions",
+        model: "gpt-3.5-turbo",
+        prompt_tokens: 850,
+        completion_tokens: 320,
+        cost: 0.00564,
+        prompt: "Translate the following English text to French: 'The quick brown fox jumps over the lazy dog. Artificial intelligence is transforming industries worldwide.'",
+        response: "Le rapide renard brun saute par-dessus le chien paresseux. L'intelligence artificielle transforme les industries du monde entier."
+      },
+      {
+        timestamp: "2025-01-06T14:20:00Z",
+        endpoint: "/v1/embeddings",
+        model: "text-embedding-ada-002",
+        prompt_tokens: 2000,
+        completion_tokens: 0,
+        cost: 0.0002,
+        prompt: "Generate embeddings for the following text: 'Machine learning models require large datasets for training. Transfer learning allows us to leverage pre-trained models for new tasks with limited data.'",
+        response: "[0.0234, -0.0456, 0.1289, ...]"
+      },
+      {
+        timestamp: "2025-01-06T16:50:00Z",
+        endpoint: "/v1/chat/completions",
+        model: "gpt-4",
+        prompt_tokens: 780,
+        completion_tokens: 620,
+        cost: 0.078,
+        prompt: "Write a creative short story about a robot who learns to appreciate human emotions, set in a futuristic city. The story should be about 500 words and include elements of conflict and resolution.",
+        response: "In the neon-drenched city of Neo-Tokyo, model XR-7 rolled silently through the crowded streets. Its primary function was waste collection, a mundane task in the grand scheme of the city's operations. For three years, seven months, and sixteen days, XR-7 had performed its duties with mechanical precision..."
+      },
+      {
+        timestamp: "2025-01-06T19:30:00Z",
+        endpoint: "/v1/completions",
+        model: "gpt-3.5-turbo",
+        prompt_tokens: 420,
+        completion_tokens: 150,
+        cost: 0.00214,
+        prompt: "Generate 5 unique blog post title ideas about sustainable technology innovations for 2025.",
+        response: "1. The Future is Green: Top 10 Sustainable Tech Innovations for 2025\n2. Beyond Solar: Emerging Renewable Technologies to Watch\n3. How AI is Driving Sustainability in Modern Industries\n4. Circular Economy Tech: Turning Waste into Wealth\n5. Carbon Capture Breakthroughs That Could Save Our Planet"
+      }
+    ];
+
+    createApp({
+      setup() {
+        const apiCalls = ref([]);
+        const rawInput = ref('');
+        const activeTab = ref('tracker');
+        const currentPrompt = ref('');
+        const currentResponse = ref('');
+        const aiSuggestions = ref([]);
+        const aiSummary = ref('');
+        
+        // Heatmap data
+        const heatmapData = computed(() => {
+          const hours = Array.from({ length: 24 }, (_, i) => ({
+            hour: i,
+            value: 0
+          }));
+          
+          // Aggregate costs by hour
+          apiCalls.value.forEach(call => {
+            const hour = new Date(call.timestamp).getHours();
+            hours[hour].value += call.cost;
+          });
+          
+          // Find max for scaling
+          const maxCost = Math.max(...hours.map(h => h.value), 0.001);
+          
+          return hours.map(h => {
+            const intensity = Math.min(100, Math.round((h.value / maxCost) * 100));
+            let color;
+            
+            if (intensity < 20) color = 'bg-gray-700';
+            else if (intensity < 40) color = 'bg-purple-700';
+            else if (intensity < 60) color = 'bg-purple-600';
+            else if (intensity < 80) color = 'bg-purple-500';
+            else color = 'bg-purple-400';
+            
+            return {
+              ...h,
+              color,
+              value: h.value
+            };
+          });
+        });
+        
+        // Weekly costs for chart
+        const weeklyCosts = computed(() => {
+          const days = Array(7).fill(0);
+          apiCalls.value.forEach(call => {
+            const day = new Date(call.timestamp).getDay(); // 0 = Sunday, 1 = Monday, etc.
+            days[day] += call.cost;
+          });
+          
+          const maxCost = Math.max(...days, 0.001);
+          return days.map(cost => ({
+            cost,
+            height: (cost / maxCost) * 100
+          }));
+        });
+        
+        // Top models by cost
+        const topModels = computed(() => {
+          const modelMap = {};
+          apiCalls.value.forEach(call => {
+            const model = call.model || 'Unknown';
+            modelMap[model] = (modelMap[model] || 0) + call.cost;
+          });
+          
+          const totalCost = totalCost.value;
+          return Object.entries(modelMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, cost]) => ({
+              name,
+              cost,
+              percentage: (cost / totalCost) * 100
+            }));
+        });
+        
+        // Top endpoints by cost
+        const topEndpoints = computed(() => {
+          const endpointMap = {};
+          apiCalls.value.forEach(call => {
+            endpointMap[call.endpoint] = (endpointMap[call.endpoint] || 0) + call.cost;
+          });
+          
+          const totalCost = totalCost.value;
+          return Object.entries(endpointMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, cost]) => ({
+              name,
+              cost,
+              percentage: (cost / totalCost) * 100
+            }));
+        });
+        
+        // Anomaly detection
+        const anomalies = computed(() => {
+          if (apiCalls.value.length < 5) return [];
+          
+          // Simple anomaly detection - find calls that cost 3x more than average
+          const avgCost = totalCost.value / apiCalls.value.length;
+          return apiCalls.value
+            .filter(call => call.cost > avgCost * 3)
+            .map(call => ({
+              title: `High Cost Call: ${call.endpoint}`,
+              description: `Call at ${new Date(call.timestamp).toLocaleTimeString()} cost $${call.cost.toFixed(5)} (${(call.cost/avgCost).toFixed(1)}x average)`,
+              severity: 'High'
+            }));
+        });
+        
+        // Cost calculations
+        const totalCost = computed(() => 
+          apiCalls.value.reduce((sum, call) => sum + (call.cost || 0), 0)
+        );
+        
+        const todaysCost = computed(() => {
+          const today = new Date().toISOString().split('T')[0];
+          return apiCalls.value
+            .filter(call => call.timestamp.startsWith(today))
+            .reduce((sum, call) => sum + (call.cost || 0), 0);
+        });
+        
+        const yesterdaysCost = computed(() => {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const dateStr = yesterday.toISOString().split('T')[0];
+          return apiCalls.value
+            .filter(call => call.timestamp.startsWith(dateStr))
+            .reduce((sum, call) => sum + (call.cost || 0), 0);
+        });
+        
+        const costChange = computed(() => {
+          if (yesterdaysCost.value === 0) return 0;
+          return ((todaysCost.value - yesterdaysCost.value) / yesterdaysCost.value) * 100;
+        });
+        
+        const totalTokens = computed(() => 
+          apiCalls.value.reduce((sum, call) => sum + (call.tokens_used || 0), 0)
+        );
+        
+        const avgCostPerCall = computed(() => 
+          apiCalls.value.length ? totalCost.value / apiCalls.value.length : 0
+        );
+        
+        const avgTokensPerCall = computed(() => 
+          apiCalls.value.length ? Math.round(totalTokens.value / apiCalls.value.length) : 0
+        );
+        
+        // Prompt analyzer calculations
+        const promptTokenCount = computed(() => {
+          // Simple token estimation: 1 token ~ 4 characters
+          return Math.round(currentPrompt.value.length / 4);
+        });
+        
+        const responseTokenCount = computed(() => {
+          return Math.round(currentResponse.value.length / 4);
+        });
+        
+        const estimatedPromptTime = computed(() => {
+          // Estimated time in seconds: 0.1s per 100 tokens
+          return (promptTokenCount.value / 100 * 0.1).toFixed(2);
+        });
+        
+        const estimatedResponseTime = computed(() => {
+          return (responseTokenCount.value / 100 * 0.1).toFixed(2);
+        });
+        
+        const promptCost = computed(() => {
+          // Assuming GPT-4 pricing: $0.03/1K tokens for prompt
+          return (promptTokenCount.value / 1000) * 0.03;
+        });
+        
+        const responseCost = computed(() => {
+          // $0.06/1K tokens for completion
+          return (responseTokenCount.value / 1000) * 0.06;
+        });
+        
+        const promptCostPercentage = computed(() => {
+          const total = promptCost.value + responseCost.value;
+          return total ? (promptCost.value / total) * 100 : 50;
+        });
+        
+        const responseCostPercentage = computed(() => {
+          return 100 - promptCostPercentage.value;
+        });
+        
+        const promptAnalysis = computed(() => {
+          const analysis = [];
+          
+          // Check for redundancy
+          if (currentPrompt.value.length > 500) {
+            const repeatedPhrases = findRepeatedPhrases(currentPrompt.value);
+            if (repeatedPhrases.length) {
+              analysis.push({
+                icon: 'fas fa-redo',
+                text: 'Repeated phrases detected'
+              });
+            }
+          }
+          
+          // Check for clarity
+          if (currentPrompt.value.split('?').length < 2) {
+            analysis.push({
+              icon: 'fas fa-question-circle',
+              text: 'Consider adding more specific questions'
+            });
+          }
+          
+          // Check for context
+          if (currentPrompt.value.split('\n').length < 3) {
+            analysis.push({
+              icon: 'fas fa-paragraph',
+              text: 'Add more context for better results'
+            });
+          }
+          
+          // Check for examples
+          if (!currentPrompt.value.includes('Example:') && !currentPrompt.value.includes('For example')) {
+            analysis.push({
+              icon: 'fas fa-lightbulb',
+              text: 'Include examples for better guidance'
+            });
+          }
+          
+          return analysis;
+        });
+        
+        const promptHighlights = computed(() => {
+          const highlights = [];
+          const text = currentPrompt.value.toLowerCase();
+          
+          // Find repeated phrases
+          if (text.includes('please') && text.indexOf('please') !== text.lastIndexOf('please')) {
+            highlights.push({
+              text: 'please',
+              reason: 'Repeated phrase that may be unnecessary'
+            });
+          }
+          
+          if (text.includes('you are') && text.indexOf('you are') !== text.lastIndexOf('you are')) {
+            highlights.push({
+              text: 'you are',
+              reason: 'Repeated instruction pattern'
+            });
+          }
+          
+          // Find long sentences
+          const sentences = currentPrompt.value.split(/[.!?]/);
+          for (const sentence of sentences) {
+            if (sentence.length > 120) {
+              highlights.push({
+                text: sentence.substring(0, 50) + '...',
+                reason: 'Long sentence may be hard to parse'
+              });
+              break;
+            }
+          }
+          
+          return highlights;
+        });
+        
+        const promptSuggestions = computed(() => {
+          const suggestions = [];
+          
+          if (promptTokenCount.value > 500) {
+            suggestions.push('Shorten prompt to reduce tokens');
+          }
+          
+          if (currentPrompt.value.split('\n').length > 8) {
+            suggestions.push('Use bullet points for clarity');
+          }
+          
+          if (!currentPrompt.value.includes('?')) {
+            suggestions.push('Add specific questions to guide the response');
+          }
+          
+          return suggestions;
+        });
+        
+        const potentialSavings = computed(() => {
+          // Estimate potential savings by reducing prompt by 20%
+          return promptCost.value * 0.2;
+        });
+        
+        const potentialSavingsPercentage = computed(() => {
+          return (potentialSavings.value / (promptCost.value + responseCost.value)) * 100;
+        });
+        
+        // Helper function to find repeated phrases
+        const findRepeatedPhrases = (text) => {
+          const words = text.toLowerCase().split(/\s+/);
+          const phraseMap = {};
+          const repeated = [];
+          
+          // Check 3-word phrases
+          for (let i = 0; i < words.length - 2; i++) {
+            const phrase = words.slice(i, i + 3).join(' ');
+            phraseMap[phrase] = (phraseMap[phrase] || 0) + 1;
+          }
+          
+          // Get phrases that appear more than once
+          for (const [phrase, count] of Object.entries(phraseMap)) {
+            if (count > 1 && phrase.split(' ').length === 3) {
+              repeated.push(phrase);
+            }
+          }
+          
+          return repeated;
+        };
+        
+        // File upload handler
+        const handleFileUpload = (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = e => {
+            try {
+              const data = JSON.parse(e.target.result);
+              if (!Array.isArray(data)) throw new Error('Invalid JSON format');
+              
+              const validCalls = data.map(call => {
+                const tokens_used = call.total_tokens || 
+                                  ((call.prompt_tokens || 0) + (call.completion_tokens || 0));
+                const cost = calculateCost(call);
+                return { ...call, tokens_used, cost };
+              });
+              
+              apiCalls.value = validCalls;
+              event.target.value = '';
+            } catch (err) {
+              alert('Error parsing JSON file: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+        };
+        
+        // Cost calculation
+        const calculateCost = (call) => {
+          const model = (call.model || "gpt-3.5-turbo").toLowerCase();
+          const pricing = {
+            "gpt-4": { prompt: 0.03 / 1000, completion: 0.06 / 1000 },
+            "gpt-3.5-turbo": { combined: 0.002 / 1000 },
+            "gpt-4-turbo": { prompt: 0.01 / 1000, completion: 0.03 / 1000 },
+            "text-embedding-ada-002": { prompt: 0.0001 / 1000, completion: 0 }
+          };
+          
+          const modelPricing = pricing[model] || pricing["gpt-3.5-turbo"];
+          
+          if (modelPricing.combined !== undefined) {
+            return (call.tokens_used || 0) * modelPricing.combined;
+          } else {
+            const promptTokens = call.prompt_tokens || 0;
+            const completionTokens = call.completion_tokens || 0;
+            
+            // If only total tokens are provided, assume 60% prompt / 40% completion split
+            if (call.tokens_used && !call.prompt_tokens && !call.completion_tokens) {
+              return call.tokens_used * (
+                (0.6 * modelPricing.prompt) + 
+                (0.4 * modelPricing.completion)
+              );
+            }
+            
+            return (promptTokens * modelPricing.prompt) + 
+                   (completionTokens * modelPricing.completion);
+          }
+        };
+        
+        // Raw input parsing
+        const parseRawInput = () => {
+          if (!rawInput.value.trim()) {
+            alert('Paste some code or logs first!');
+            return;
+          }
+          
+          try {
+            // Try parsing as full JSON array
+            const data = JSON.parse(rawInput.value);
+            if (Array.isArray(data)) {
+              apiCalls.value = data.map(call => {
+                const tokens_used = call.total_tokens || 
+                                  ((call.prompt_tokens || 0) + (call.completion_tokens || 0));
+                const cost = calculateCost(call);
+                return { ...call, tokens_used, cost };
+              });
+              return;
+            }
+          } catch {
+            // Fallback to regex parsing if full JSON parse fails
+          }
+          
+          // Regex parsing for individual JSON objects
+          const jsonRegex = /\{[^{}]*\}/g;
+          const matches = rawInput.value.match(jsonRegex) || [];
+          
+          const calls = [];
+          matches.forEach(match => {
+            try {
+              const obj = JSON.parse(match);
+              if (obj.endpoint && (obj.tokens_used || obj.prompt_tokens || obj.total_tokens)) {
+                const tokens_used = obj.total_tokens || 
+                                  ((obj.prompt_tokens || 0) + (obj.completion_tokens || 0));
+                const cost = calculateCost(obj);
+                calls.push({ ...obj, tokens_used, cost });
+              }
+            } catch (e) {
+              console.log("Skipping invalid JSON object");
+            }
+          });
+          
+          if (calls.length > 0) {
+            apiCalls.value = calls;
+          } else {
+            alert('No valid API call objects found in input');
+          }
+        };
+        
+        const resetRawInput = () => {
+          rawInput.value = '';
+        };
+        
+        // Generate sample data for demo
+        const generateSampleData = () => {
+          apiCalls.value = [...sampleData];
+        };
+        
+        // Analyze a specific call
+        const analyzeCall = (call) => {
+          activeTab.value = 'analyzer';
+          currentPrompt.value = call.prompt || '';
+          currentResponse.value = call.response || '';
+        };
+
+      
+        // Generate AI suggestions
+        const generateAISuggestions = () => {
+          aiSuggestions.value = [
+            "Consider using a more concise system message to reduce token usage",
+            "Add clear examples to guide the model and reduce the chance of irrelevant responses",
+            "Break complex requests into multiple steps for better results",
+            "Specify the desired output format to reduce the need for post-processing",
+            "Set temperature to 0.7 for more focused responses"
+          ];
+        };
+        
+        // Generate AI summary
+        const generateAISummary = () => {
+          aiSummary.value = "Based on your API usage patterns, I've identified several optimization opportunities:\n\n" +
+          "1. Your highest costs come from GPT-4 model calls - consider using GPT-3.5 for simpler tasks\n" +
+          "2. 35% of your API calls occur during peak hours (2-5 PM) when network latency is higher\n" +
+          "3. Your most expensive endpoint is /v1/chat/completions - review these calls for optimization opportunities\n" +
+          "4. Several prompts contain redundant context - removing this could save up to 20% in token costs\n\n" +
+          "Recommendation: Implement caching for frequent similar requests and adjust model selection based on task complexity.";
+        };
+        
+        // Initialize with sample data
+        generateSampleData();
+        
+        return {
+          apiCalls,
+          rawInput,
+          activeTab,
+          currentPrompt,
+          currentResponse,
+          aiSuggestions,
+          aiSummary,
+          heatmapData,
+          weeklyCosts,
+          topModels,
+          topEndpoints,
+          anomalies,
+          totalCost,
+          todaysCost,
+          yesterdaysCost,
+          costChange,
+          totalTokens,
+          avgCostPerCall,
+          avgTokensPerCall,
+          promptTokenCount,
+          responseTokenCount,
+          estimatedPromptTime,
+          estimatedResponseTime,
+          promptCost,
+          responseCost,
+          promptCostPercentage,
+          responseCostPercentage,
+          promptAnalysis,
+          promptHighlights,
+          promptSuggestions,
+          potentialSavings,
+          potentialSavingsPercentage,
+          handleFileUpload,
+          parseRawInput,
+          resetRawInput,
+          generateSampleData,
+          analyzeCall,
+          generateAISuggestions,
+          generateAISummary
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
